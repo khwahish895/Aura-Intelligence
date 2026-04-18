@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Helvetica Neue", Helvetica, Arial, "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-serif: "Georgia", serif;
+
+  --color-aura-bg: #0E0E10;
+  --color-aura-surface: #1A1A1D;
+  --color-aura-accent: #B0FF2E; /* Neon lime */
+  --color-aura-text: #FFFFFF;
+  --color-aura-muted: #808085;
+  --color-aura-line: rgba(255, 255, 255, 0.1);
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-aura-bg text-aura-text antialiased;
+  }
+}
+
+.data-row:hover {
+  background: var(--color-aura-surface);
+  color: var(--color-aura-accent);
+}
+
+.smart-label {
+  @apply inline-block bg-aura-accent text-black px-3 py-1 text-[10px] font-bold uppercase rounded-sm mb-5;
+}
+
+.section-title {
+  @apply flex items-center gap-2 text-[11px] uppercase tracking-[2px] text-aura-muted mb-8 after:content-[''] after:h-[1px] after:bg-aura-line after:flex-1;
+}
+
+.micro-label {
+  @apply text-[10px] uppercase tracking-widest font-semibold text-aura-muted;
+}
+
+.cta-button {
+  @apply bg-aura-text text-black px-8 py-4 text-sm font-bold uppercase tracking-wider hover:bg-aura-accent transition-colors duration-300;
+}
+
+.search-bar {
+  @apply bg-aura-surface border border-aura-line px-5 py-2 rounded-full text-aura-muted text-[13px] flex justify-between items-center;
+}
+
+

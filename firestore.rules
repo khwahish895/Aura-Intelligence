@@ -1,0 +1,87 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 3. Primitive Definition
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    
+    // Admin check - bootstrapped via email for this app's creator
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'khwahishsingh2005@gmail.com' || // System Admin
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // 4. Products
+    match /products/{productId} {
+      allow read: if true; // Public catalog
+      allow write: if isAdmin() && isValidProduct(incoming());
+      
+      function isValidProduct(data) {
+        return data.keys().hasAll(['name', 'price', 'category', 'createdAt']) &&
+               data.name is string && data.name.size() <= 200 &&
+               data.price is number && data.price > 0 &&
+               data.category is string &&
+               data.createdAt == request.time;
+      }
+    }
+
+    // 5. Users
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUserCreate(incoming());
+      allow update: if isOwner(userId) && isValidUserUpdate(incoming());
+
+      function isValidUserCreate(data) {
+        return data.keys().hasAll(['email', 'role']) &&
+               data.email == request.auth.token.email &&
+               data.role == 'user'; // Users can't make themselves admins
+      }
+
+      function isValidUserUpdate(data) {
+        return incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'wishlist', 'cart']) &&
+               incoming().role == existing().role; // Role is immutable
+      }
+    }
+
+    // 6. Orders
+    match /orders/{orderId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      
+      allow create: if isVerified() && isValidOrderCreate(incoming());
+      allow update: if isAdmin() && isValidOrderUpdate(incoming());
+
+      function isValidOrderCreate(data) {
+        return data.userId == request.auth.uid &&
+               data.status == 'pending' &&
+               data.createdAt == request.time &&
+               data.products is list && data.products.size() > 0;
+      }
+
+      function isValidOrderUpdate(data) {
+        return incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
+               incoming().status in ['pending', 'shipped', 'delivered'];
+      }
+    }
+    
+    // Admin collection (only manageable via backend or manually)
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if false; // Only manageable via console for safety in this version
+    }
+  }
+}
